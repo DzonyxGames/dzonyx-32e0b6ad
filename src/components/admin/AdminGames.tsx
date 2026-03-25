@@ -18,12 +18,13 @@ interface GameForm {
   epic_link: string;
   image_url: string;
   video_url: string;
+  download_url: string;
   is_public: boolean;
 }
 
 const emptyForm: GameForm = {
   title: '', description: '', price: '0', is_free: true,
-  steam_link: '', epic_link: '', image_url: '', video_url: '', is_public: true,
+  steam_link: '', epic_link: '', image_url: '', video_url: '', download_url: '', is_public: true,
 };
 
 const AdminGames = () => {
@@ -31,6 +32,8 @@ const AdminGames = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<GameForm>(emptyForm);
+  const [gameFile, setGameFile] = useState<File | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const { data: games } = useQuery({
     queryKey: ['admin-games'],
@@ -42,6 +45,22 @@ const AdminGames = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      let downloadUrl: string | null = form.download_url || null;
+
+      if (gameFile) {
+        setUploadingFile(true);
+        try {
+          const extension = gameFile.name.split('.').pop() || 'bin';
+          const filePath = `games/${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await supabase.storage.from('downloads').upload(filePath, gameFile);
+          if (uploadError) throw uploadError;
+          const { data: fileData } = supabase.storage.from('downloads').getPublicUrl(filePath);
+          downloadUrl = fileData.publicUrl;
+        } finally {
+          setUploadingFile(false);
+        }
+      }
+
       const payload = {
         title: form.title,
         description: form.description || null,
@@ -51,13 +70,14 @@ const AdminGames = () => {
         epic_link: form.epic_link || null,
         image_url: form.image_url || null,
         video_url: form.video_url || null,
+        download_url: downloadUrl,
         is_public: form.is_public,
       };
       if (editId) {
-        const { error } = await supabase.from('games').update(payload).eq('id', editId);
+        const { error } = await supabase.from('games').update(payload as any).eq('id', editId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('games').insert(payload);
+        const { error } = await supabase.from('games').insert(payload as any);
         if (error) throw error;
       }
     },
@@ -68,6 +88,7 @@ const AdminGames = () => {
       setDialogOpen(false);
       setEditId(null);
       setForm(emptyForm);
+      setGameFile(null);
       toast.success(editId ? 'Game updated!' : 'Game added!');
     },
     onError: (e: Error) => toast.error(e.message),
@@ -97,6 +118,7 @@ const AdminGames = () => {
       epic_link: game.epic_link || '',
       image_url: game.image_url || '',
       video_url: game.video_url || '',
+      download_url: (game as any).download_url || '',
       is_public: game.is_public,
     });
     setDialogOpen(true);
@@ -105,6 +127,7 @@ const AdminGames = () => {
   const openNew = () => {
     setEditId(null);
     setForm(emptyForm);
+    setGameFile(null);
     setDialogOpen(true);
   };
 
@@ -161,14 +184,30 @@ const AdminGames = () => {
             <Input placeholder="Epic Games Link (optional)" value={form.epic_link} onChange={e => updateField('epic_link', e.target.value)} className="bg-muted" />
             <Input placeholder="Image URL" value={form.image_url} onChange={e => updateField('image_url', e.target.value)} className="bg-muted" />
             <Input placeholder="Video URL (embed)" value={form.video_url} onChange={e => updateField('video_url', e.target.value)} className="bg-muted" />
+            <Input
+              type="file"
+              onChange={(e) => setGameFile(e.target.files?.[0] || null)}
+              className="bg-muted"
+            />
+            <Input
+              placeholder="Or paste download URL (optional)"
+              value={form.download_url}
+              onChange={e => updateField('download_url', e.target.value)}
+              className="bg-muted"
+            />
+            {form.download_url && (
+              <a href={form.download_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">
+                Current download file
+              </a>
+            )}
 
             <div className="flex items-center gap-3">
               <Switch checked={form.is_public} onCheckedChange={v => updateField('is_public', v)} />
               <span className="text-sm text-foreground">{form.is_public ? 'Public' : 'Private'}</span>
             </div>
 
-            <Button onClick={() => saveMutation.mutate()} disabled={!form.title.trim() || saveMutation.isPending} className="w-full">
-              {saveMutation.isPending ? 'Saving...' : editId ? 'Update Game' : 'Add Game'}
+            <Button onClick={() => saveMutation.mutate()} disabled={!form.title.trim() || saveMutation.isPending || uploadingFile} className="w-full">
+              {saveMutation.isPending || uploadingFile ? 'Saving...' : editId ? 'Update Game' : 'Add Game'}
             </Button>
           </div>
         </DialogContent>
