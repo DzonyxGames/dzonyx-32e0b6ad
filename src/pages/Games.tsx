@@ -18,7 +18,7 @@ const Games = () => {
   const { data: games, isLoading } = useQuery({
     queryKey: ['games'],
     queryFn: async () => {
-      const { data } = await supabase.from('games').select('*').eq('is_public', true).order('created_at', { ascending: false });
+      const { data } = await supabase.from('games').select('*').order('created_at', { ascending: false });
       return data || [];
     },
   });
