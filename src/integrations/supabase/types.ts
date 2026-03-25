@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          download_url: string | null
           epic_link: string | null
           id: string
           image_url: string | null
@@ -32,6 +33,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          download_url?: string | null
           epic_link?: string | null
           id?: string
           image_url?: string | null
@@ -46,6 +48,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          download_url?: string | null
           epic_link?: string | null
           id?: string
           image_url?: string | null
@@ -63,6 +66,7 @@ export type Database = {
         Row: {
           content: string | null
           created_at: string
+          download_url: string | null
           id: string
           is_public: boolean
           media_type: string | null
@@ -73,6 +77,7 @@ export type Database = {
         Insert: {
           content?: string | null
           created_at?: string
+          download_url?: string | null
           id?: string
           is_public?: boolean
           media_type?: string | null
@@ -83,6 +88,7 @@ export type Database = {
         Update: {
           content?: string | null
           created_at?: string
+          download_url?: string | null
           id?: string
           is_public?: boolean
           media_type?: string | null
@@ -144,7 +150,15 @@ export type Database = {
           text?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "suggestions_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
