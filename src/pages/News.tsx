@@ -7,7 +7,7 @@ const News = () => {
   const { data: news, isLoading } = useQuery({
     queryKey: ['news'],
     queryFn: async () => {
-      const { data } = await supabase.from('news').select('*').eq('is_public', true).order('created_at', { ascending: false });
+      const { data } = await supabase.from('news').select('*').order('created_at', { ascending: false });
       return data || [];
     },
   });
